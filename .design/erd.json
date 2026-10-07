@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "entities": [
+    {
+      "id": "ent_verthlea",
+      "name": "Config",
+      "attributes": []
+    },
+    {
+      "id": "ent_3w6d83w7",
+      "name": "Source",
+      "description": "Where we're backing photos up from",
+      "attributes": [
+        {
+          "id": "attr_8psl1f6q",
+          "name": "Type",
+          "note": "Type can be `local` or `remote`"
+        },
+        {
+          "id": "attr_wyhptsav",
+          "name": "Name"
+        },
+        {
+          "id": "attr_9p45hjhm",
+          "name": "Location",
+          "note": "URL or local path"
+        },
+        {
+          "id": "attr_zik8hma7",
+          "name": "Credentials",
+          "note": "Optional – e.g Google auth token"
+        }
+      ]
+    },
+    {
+      "id": "ent_lvzn3yvp",
+      "name": "Destination",
+      "description": "Where photos are being backed up to. This is always AWS",
+      "attributes": [
+        {
+          "id": "attr_9sbg54a0",
+          "name": "Name"
+        },
+        {
+          "id": "attr_ua5yjmm2",
+          "name": "Location",
+          "note": "AWS URL"
+        },
+        {
+          "id": "attr_683nljr0",
+          "name": "Credentials",
+          "note": "AWS auth token"
+        },
+        {
+          "id": "attr_2o1kqwqt",
+          "name": "AWS storage class"
+        }
+      ]
+    },
+    {
+      "id": "ent_f7vq2srv",
+      "name": "Folder naming convention",
+      "description": "How the backup zip file is named",
+      "attributes": [
+        {
+          "id": "attr_r191gupj",
+          "name": "Pattern",
+          "note": "eg.arnautovic-photos-2026-09-vedran"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_ynsjsku1",
+      "from": "ent_verthlea",
+      "to": "ent_3w6d83w7",
+      "fromCard": "one",
+      "toCard": "many",
+      "label": "has"
+    },
+    {
+      "id": "rel_dv3hng5x",
+      "from": "ent_verthlea",
+      "to": "ent_lvzn3yvp",
+      "fromCard": "one",
+      "toCard": "one",
+      "label": "has"
+    },
+    {
+      "id": "rel_ph9xdcdt",
+      "from": "ent_verthlea",
+      "to": "ent_f7vq2srv",
+      "fromCard": "one",
+      "toCard": "zero-many"
+    }
+  ],
+  "layout": {
+    "ent_verthlea": {
+      "x": 817,
+      "y": 460
+    },
+    "ent_3w6d83w7": {
+      "x": 1198,
+      "y": 453
+    },
+    "ent_lvzn3yvp": {
+      "x": 647,
+      "y": 686
+    },
+    "ent_f7vq2srv": {
+      "x": 942,
+      "y": 790
+    }
+  }
+}

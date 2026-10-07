@@ -1,0 +1,337 @@
+/* Plain, consistent and accessible. Hi-fi visual design is a separate step. */
+:root {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #555b65;
+  --border: #c4c9d1;
+  --surface: #f4f5f7;
+  --accent: #1f5fbf;
+  --accent-fg: #ffffff;
+  --danger: #a61b1b;
+  --danger-bg: #fdecec;
+  --focus: #1f5fbf;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17191c;
+    --fg: #ececec;
+    --muted: #a9afb8;
+    --border: #4a4f57;
+    --surface: #23262b;
+    --accent: #6ea4ff;
+    --accent-fg: #0b1220;
+    --danger: #ff8a8a;
+    --danger-bg: #3a1d1d;
+    --focus: #8fb8ff;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    16px/1.5 system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1 {
+  font-size: 1.75rem;
+  margin: 0 0 16px;
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin: 0 0 16px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+button {
+  font: inherit;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+}
+
+button.secondary {
+  background: var(--surface);
+  color: var(--fg);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+input:not([type='checkbox']),
+select {
+  font: inherit;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+label {
+  font-weight: 600;
+}
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 0 0 16px;
+}
+
+legend {
+  font-weight: 600;
+  padding: 0 4px;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 2px 0 0;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 0.9rem;
+  margin: 4px 0 0;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+/* Splash */
+.splash {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 3s;
+  }
+}
+
+.credits {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.error {
+  color: var(--danger);
+}
+
+/* Home */
+.backup-month {
+  margin: 16px 0;
+}
+
+.backup-month label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.backup-month input {
+  max-width: 16rem;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.items .item,
+.item.cleanup {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.item .hint {
+  grid-column: 2;
+  overflow-wrap: anywhere;
+}
+
+.item.cleanup {
+  margin-top: 16px;
+}
+
+.stages {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: 1fr 3.5em;
+  gap: 4px 12px;
+  color: var(--muted);
+}
+
+.stage.current {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.stage progress {
+  grid-column: 1;
+  width: 100%;
+  height: 10px;
+  accent-color: var(--accent);
+}
+
+.stage-percent {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.confirmation,
+.paused-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.destination {
+  overflow-wrap: anywhere;
+}
+
+.error-details {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.error-details p {
+  margin: 0;
+}
+
+.error-title {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* Modals */
+.modal {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.modal::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+
+.settings .field {
+  margin-bottom: 16px;
+}
+
+.settings fieldset label,
+.settings .field > label {
+  display: block;
+  margin: 8px 0 4px;
+}
+
+.settings .field > label {
+  margin-top: 0;
+}
+
+.settings .row input {
+  flex: 1;
+}

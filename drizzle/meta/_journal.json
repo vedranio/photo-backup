@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1791334961106,
+      "tag": "0000_dry_surge",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791348060296,
+      "tag": "0001_naive_jean_grey",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791348060775,
+      "tag": "0002_destination_deep_archive",
+      "breakpoints": true
+    }
+  ]
+}

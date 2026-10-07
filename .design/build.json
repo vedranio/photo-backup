@@ -1,0 +1,573 @@
+{
+  "schemaVersion": 1,
+  "builtAt": "2026-10-07T05:56:11.249Z",
+  "snapshot": {
+    "config": {
+      "schemaVersion": 1,
+      "name": "photobackup",
+      "preview": {
+        "url": "http://localhost:5173",
+        "devCommand": "npm run dev:web"
+      }
+    },
+    "erd": {
+      "schemaVersion": 1,
+      "entities": [
+        {
+          "id": "ent_verthlea",
+          "name": "Config",
+          "attributes": []
+        },
+        {
+          "id": "ent_3w6d83w7",
+          "name": "Source",
+          "description": "Where we're backing photos up from",
+          "attributes": [
+            {
+              "id": "attr_8psl1f6q",
+              "name": "Type",
+              "note": "Type can be `local` or `remote`"
+            },
+            {
+              "id": "attr_wyhptsav",
+              "name": "Name"
+            },
+            {
+              "id": "attr_9p45hjhm",
+              "name": "Location",
+              "note": "URL or local path"
+            },
+            {
+              "id": "attr_zik8hma7",
+              "name": "Credentials",
+              "note": "Optional – e.g Google auth token"
+            }
+          ]
+        },
+        {
+          "id": "ent_lvzn3yvp",
+          "name": "Destination",
+          "description": "Where photos are being backed up to. This is always AWS",
+          "attributes": [
+            {
+              "id": "attr_9sbg54a0",
+              "name": "Name"
+            },
+            {
+              "id": "attr_ua5yjmm2",
+              "name": "Location",
+              "note": "AWS URL"
+            },
+            {
+              "id": "attr_683nljr0",
+              "name": "Credentials",
+              "note": "AWS auth token"
+            },
+            {
+              "id": "attr_2o1kqwqt",
+              "name": "AWS storage class"
+            }
+          ]
+        },
+        {
+          "id": "ent_f7vq2srv",
+          "name": "Folder naming convention",
+          "description": "How the backup zip file is named",
+          "attributes": [
+            {
+              "id": "attr_r191gupj",
+              "name": "Pattern",
+              "note": "eg.arnautovic-photos-2026-09-vedran"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "rel_ynsjsku1",
+          "from": "ent_verthlea",
+          "to": "ent_3w6d83w7",
+          "fromCard": "one",
+          "toCard": "many",
+          "label": "has"
+        },
+        {
+          "id": "rel_dv3hng5x",
+          "from": "ent_verthlea",
+          "to": "ent_lvzn3yvp",
+          "fromCard": "one",
+          "toCard": "one",
+          "label": "has"
+        },
+        {
+          "id": "rel_ph9xdcdt",
+          "from": "ent_verthlea",
+          "to": "ent_f7vq2srv",
+          "fromCard": "one",
+          "toCard": "zero-many"
+        }
+      ],
+      "layout": {
+        "ent_verthlea": {
+          "x": 817,
+          "y": 460
+        },
+        "ent_3w6d83w7": {
+          "x": 1198,
+          "y": 453
+        },
+        "ent_lvzn3yvp": {
+          "x": 647,
+          "y": 686
+        },
+        "ent_f7vq2srv": {
+          "x": 942,
+          "y": 790
+        }
+      }
+    },
+    "flows": {
+      "schemaVersion": 2,
+      "screens": [
+        {
+          "id": "scr_fjpt4enj",
+          "name": "Splash",
+          "notes": "Transition from the splash screen to the home screen as soon as the app has loaded",
+          "states": [
+            {
+              "id": "st_ki442ws8",
+              "name": "Default",
+              "sees": [
+                "Loading indicator",
+                "Credits"
+              ],
+              "ctas": [
+                {
+                  "id": "cta_vuw7wy7r",
+                  "label": "On loading finished"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "scr_6lfsw3cs",
+          "name": "Home",
+          "notes": "When selecting items to back up, the user can select one or more of Google Drive and Local folder.",
+          "states": [
+            {
+              "id": "st_fsjlc5tb",
+              "name": "Default",
+              "notes": "Items to back up are local folder and google drive location. The values of these are prepopulated from settings. The user can just select whether they want them backed up. They can only be changed in settings.If 'Clean up after backup\" is selected, the backed up files from the local folder and google drive are deleted",
+              "sees": [],
+              "ctas": [
+                {
+                  "id": "cta_brxb5a35",
+                  "label": "Settings"
+                },
+                {
+                  "id": "cta_it7orxzx",
+                  "label": "Select items to back up"
+                },
+                {
+                  "id": "cta_d13d4frc",
+                  "label": "Back up"
+                },
+                {
+                  "id": "cta_kvwg329n",
+                  "label": "Clean up after backup"
+                },
+                {
+                  "id": "cta_jtpm50ep",
+                  "label": "Set backup month"
+                }
+              ],
+              "primaryCtaId": "cta_d13d4frc"
+            },
+            {
+              "id": "st_5ttst55w",
+              "name": "Backup in progress",
+              "notes": "The progress indicator will show the stage (eg. downloading from google drive, compressing, uploading, cleaning up) and % completed of each stage",
+              "sees": [
+                "Progress indicator"
+              ],
+              "ctas": [
+                {
+                  "id": "cta_zygntttz",
+                  "label": "Cancel backup"
+                },
+                {
+                  "id": "cta_3h6nlghh",
+                  "label": "Pause backup"
+                }
+              ]
+            },
+            {
+              "id": "st_uh8cvm18",
+              "name": "Backup successful",
+              "sees": [
+                "Confirmation of number of items and size backed up"
+              ],
+              "ctas": [
+                {
+                  "id": "cta_82byeemg",
+                  "label": "Done"
+                }
+              ]
+            },
+            {
+              "id": "st_vublspne",
+              "name": "Backup failed",
+              "sees": [
+                "Error details"
+              ],
+              "ctas": [
+                {
+                  "id": "cta_zd7xrpav",
+                  "label": "Retry"
+                },
+                {
+                  "id": "cta_ri8wpbtk",
+                  "label": "Cancel"
+                }
+              ],
+              "primaryCtaId": "cta_zd7xrpav"
+            },
+            {
+              "id": "st_vuryip8b",
+              "name": "Backup paused",
+              "sees": [
+                "Backup paused",
+                "Stage and % completed"
+              ],
+              "ctas": [
+                {
+                  "id": "cta_k0fqblmi",
+                  "label": "Resume backup"
+                },
+                {
+                  "id": "cta_1yx7q3iu",
+                  "label": "Cancel backup"
+                }
+              ],
+              "primaryCtaId": "cta_k0fqblmi"
+            }
+          ]
+        },
+        {
+          "id": "scr_nqzsws1l",
+          "name": "Settings",
+          "notes": "Settings should be presented as a modal",
+          "states": [
+            {
+              "id": "st_ttcugo7w",
+              "name": "Default",
+              "sees": [
+                "Google drive credentials",
+                "AWS credentials",
+                "Default Google drive location",
+                "Default AWS location",
+                "Default local folder",
+                "Folder naming convention",
+                "AWS storage class"
+              ],
+              "ctas": [
+                {
+                  "id": "cta_ejautwuw",
+                  "label": "Save"
+                },
+                {
+                  "id": "cta_opt505gl",
+                  "label": "Exit without saving"
+                }
+              ],
+              "primaryCtaId": "cta_ejautwuw"
+            }
+          ]
+        },
+        {
+          "id": "scr_9bsey0ec",
+          "name": "Confirm cancel",
+          "notes": "This is a modal presented on top of home page",
+          "states": [
+            {
+              "id": "st_fjos0gua",
+              "name": "Default",
+              "sees": [
+                "Cancel backup?"
+              ],
+              "ctas": [
+                {
+                  "id": "cta_lulap6h0",
+                  "label": "Cancel"
+                },
+                {
+                  "id": "cta_9ae5goek",
+                  "label": "Keep backing up"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "id": "tr_0rm0xoax",
+          "from": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_fsjlc5tb",
+            "ctaId": "cta_brxb5a35"
+          },
+          "to": {
+            "screenId": "scr_nqzsws1l"
+          }
+        },
+        {
+          "id": "tr_vayk2jed",
+          "from": {
+            "screenId": "scr_fjpt4enj",
+            "stateId": "st_ki442ws8",
+            "ctaId": "cta_vuw7wy7r"
+          },
+          "to": {
+            "screenId": "scr_6lfsw3cs"
+          }
+        },
+        {
+          "id": "tr_x5gou8ha",
+          "from": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_5ttst55w",
+            "ctaId": "cta_zygntttz"
+          },
+          "to": {
+            "screenId": "scr_9bsey0ec"
+          }
+        },
+        {
+          "id": "tr_lspgyjvy",
+          "from": {
+            "screenId": "scr_9bsey0ec",
+            "stateId": "st_fjos0gua",
+            "ctaId": "cta_lulap6h0"
+          },
+          "to": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_fsjlc5tb"
+          }
+        },
+        {
+          "id": "tr_bkw0hxaf",
+          "from": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_5ttst55w",
+            "ctaId": "cta_3h6nlghh"
+          },
+          "to": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_vuryip8b"
+          }
+        },
+        {
+          "id": "tr_ym7av3kz",
+          "from": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_vuryip8b",
+            "ctaId": "cta_1yx7q3iu"
+          },
+          "to": {
+            "screenId": "scr_9bsey0ec"
+          }
+        },
+        {
+          "id": "tr_ytgrxq5w",
+          "from": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_vuryip8b",
+            "ctaId": "cta_k0fqblmi"
+          },
+          "to": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_5ttst55w"
+          }
+        },
+        {
+          "id": "tr_ad4tqm0o",
+          "from": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_vublspne",
+            "ctaId": "cta_zd7xrpav"
+          },
+          "to": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_5ttst55w"
+          }
+        },
+        {
+          "id": "tr_apyx21jg",
+          "from": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_vublspne",
+            "ctaId": "cta_ri8wpbtk"
+          },
+          "to": {
+            "screenId": "scr_9bsey0ec"
+          }
+        },
+        {
+          "id": "tr_yu7k07qw",
+          "from": {
+            "screenId": "scr_9bsey0ec",
+            "stateId": "st_fjos0gua",
+            "ctaId": "cta_9ae5goek"
+          },
+          "to": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_5ttst55w"
+          }
+        },
+        {
+          "id": "tr_n9bsxu6e",
+          "from": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_fsjlc5tb",
+            "ctaId": "cta_d13d4frc"
+          },
+          "to": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_5ttst55w"
+          }
+        },
+        {
+          "id": "tr_j82b3yn8",
+          "from": {
+            "screenId": "scr_nqzsws1l",
+            "stateId": "st_ttcugo7w",
+            "ctaId": "cta_ejautwuw"
+          },
+          "to": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_fsjlc5tb"
+          }
+        },
+        {
+          "id": "tr_mggfgx4l",
+          "from": {
+            "screenId": "scr_nqzsws1l",
+            "stateId": "st_ttcugo7w",
+            "ctaId": "cta_opt505gl"
+          },
+          "to": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_fsjlc5tb"
+          }
+        },
+        {
+          "id": "tr_s0peqzbo",
+          "from": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_uh8cvm18",
+            "ctaId": "cta_82byeemg"
+          },
+          "to": {
+            "screenId": "scr_6lfsw3cs",
+            "stateId": "st_fsjlc5tb"
+          }
+        }
+      ],
+      "layout": {
+        "scr_fjpt4enj": {
+          "x": 564,
+          "y": 375
+        },
+        "scr_6lfsw3cs": {
+          "x": 997,
+          "y": 352
+        },
+        "scr_nqzsws1l": {
+          "x": 1780,
+          "y": -113
+        },
+        "scr_9bsey0ec": {
+          "x": 1653,
+          "y": 1040
+        }
+      }
+    }
+  },
+  "map": {
+    "entities": {
+      "ent_verthlea": [
+        "src/main/db/schema.ts#config",
+        "src/main/db/index.ts#seed"
+      ],
+      "ent_3w6d83w7": [
+        "src/main/db/schema.ts#sources",
+        "src/main/config/service.ts#ConfigService"
+      ],
+      "ent_lvzn3yvp": [
+        "src/main/db/schema.ts#destinations",
+        "src/main/config/service.ts#ConfigService",
+        "src/main/aws/location.ts",
+        "src/shared/storageClass.ts"
+      ],
+      "ent_f7vq2srv": [
+        "src/main/db/schema.ts#folderNamingConventions",
+        "src/shared/pattern.ts"
+      ]
+    },
+    "screens": {
+      "scr_fjpt4enj": [
+        "src/renderer/src/screens/Splash.tsx"
+      ],
+      "scr_6lfsw3cs": [
+        "src/renderer/src/screens/home/Home.tsx",
+        "src/main/backup/job.ts",
+        "src/main/backup/plan.ts",
+        "src/shared/month.ts"
+      ],
+      "scr_nqzsws1l": [
+        "src/renderer/src/screens/Settings.tsx"
+      ],
+      "scr_9bsey0ec": [
+        "src/renderer/src/screens/ConfirmCancel.tsx"
+      ]
+    },
+    "states": {
+      "scr_fjpt4enj": {
+        "st_ki442ws8": [
+          "src/renderer/src/screens/Splash.tsx#Splash"
+        ]
+      },
+      "scr_6lfsw3cs": {
+        "st_fsjlc5tb": [
+          "src/renderer/src/screens/home/DefaultState.tsx#DefaultState",
+          "src/renderer/src/AppState.tsx#AppStateProvider"
+        ],
+        "st_5ttst55w": [
+          "src/renderer/src/screens/home/InProgressState.tsx#InProgressState",
+          "src/renderer/src/components/StageProgressList.tsx"
+        ],
+        "st_uh8cvm18": [
+          "src/renderer/src/screens/home/SuccessfulState.tsx#SuccessfulState"
+        ],
+        "st_vublspne": [
+          "src/renderer/src/screens/home/FailedState.tsx#FailedState"
+        ],
+        "st_vuryip8b": [
+          "src/renderer/src/screens/home/PausedState.tsx#PausedState"
+        ]
+      },
+      "scr_nqzsws1l": {
+        "st_ttcugo7w": [
+          "src/renderer/src/screens/Settings.tsx#SettingsForm"
+        ]
+      },
+      "scr_9bsey0ec": {
+        "st_fjos0gua": [
+          "src/renderer/src/screens/ConfirmCancel.tsx#ConfirmCancel"
+        ]
+      }
+    }
+  }
+}
