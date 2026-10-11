@@ -76,7 +76,9 @@ const fakeDrive = (): DriveApi & { trashed: string[] } => {
       mkdirSync(path.dirname(dest), { recursive: true })
       writeFileSync(dest, 'c'.repeat(50))
     },
-    trash: async (id) => void trashed.push(id)
+    trash: async (id) => void trashed.push(id),
+    accountName: async () => 'Vedran Arnautovic',
+    folderName: async () => 'Photos'
   }
 }
 
@@ -117,6 +119,7 @@ describe('backup plan', () => {
     expect(snap.status).toBe('succeeded')
     expect(snap.stages.map((s) => [s.id, s.percent])).toEqual([
       ['download', 100],
+      ['local', 100],
       ['compress', 100],
       ['upload', 100],
       ['cleanup', 100]
@@ -143,8 +146,21 @@ describe('backup plan', () => {
     const { job, trashLocal } = setup(config())
     job.start({ sourceIds: [1], cleanUp: false, month: '2026-09' })
     await waitFor(() => job.snapshot().status !== 'running')
-    expect(job.snapshot().stages.map((s) => s.id)).toEqual(['compress', 'upload'])
+    expect(job.snapshot().stages.map((s) => s.id)).toEqual(['local', 'compress', 'upload'])
     expect(trashLocal).not.toHaveBeenCalled()
+  })
+
+  it('only gets local files when the local folder is selected', async () => {
+    const { job } = setup(config())
+    job.start({ sourceIds: [2], cleanUp: true, month: '2026-09' })
+    await waitFor(() => job.snapshot().status !== 'running')
+    expect(job.snapshot().stages.map((s) => s.id)).toEqual([
+      'download',
+      'compress',
+      'upload',
+      'cleanup'
+    ])
+    expect(job.snapshot().result?.itemCount).toBe(1)
   })
 
   it('fails with a clear error when AWS or a source isn’t set up', async () => {

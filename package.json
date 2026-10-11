@@ -21,12 +21,15 @@
     "build:linux": "electron-vite build && electron-builder --linux",
     "dev:web": "vite --config vite.web.config.ts",
     "test": "vitest run",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "package:mac": "electron-vite build && electron-builder --mac dir && codesign --force --deep --sign - dist/mac-arm64/photobackup.app"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1147.0",
     "@aws-sdk/lib-storage": "^3.1147.0",
     "@electron-toolkit/utils": "^4.0.0",
+    "@fontsource/barlow": "^5.3.0",
+    "@fontsource/barlow-semi-condensed": "^5.3.0",
     "archiver": "^8.0.0",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.3",

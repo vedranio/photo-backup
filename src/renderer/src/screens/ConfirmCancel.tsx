@@ -18,12 +18,12 @@ export function ConfirmCancel(): React.JSX.Element | null {
     })
 
   return (
-    <Modal title="Cancel backup?" onDismiss={keepBackingUp}>
-      <div className="actions">
+    <Modal title="Cancel backup?" onDismiss={keepBackingUp} narrow>
+      <div className="modal-actions">
         {/* Cancel (cta_lulap6h0) → Home › Default */}
         <button
           type="button"
-          className="secondary"
+          className="btn"
           onClick={() =>
             act(async (api) => {
               await api.backup.cancel()
@@ -33,7 +33,7 @@ export function ConfirmCancel(): React.JSX.Element | null {
         >
           Cancel
         </button>
-        <button type="button" className="secondary" onClick={keepBackingUp}>
+        <button type="button" className="btn" onClick={keepBackingUp}>
           Keep backing up
         </button>
       </div>

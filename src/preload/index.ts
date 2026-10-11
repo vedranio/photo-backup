@@ -10,7 +10,7 @@ const api: Api = {
     chooseLocalFolder: () => ipcRenderer.invoke(IPC.configChooseLocalFolder)
   },
   google: {
-    signIn: () => ipcRenderer.invoke(IPC.googleSignIn)
+    signIn: (client) => ipcRenderer.invoke(IPC.googleSignIn, client)
   },
   backup: {
     getStatus: () => ipcRenderer.invoke(IPC.backupGetStatus),

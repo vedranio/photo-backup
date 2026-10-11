@@ -28,7 +28,9 @@ function SettingsForm(): React.JSX.Element {
     folderNamingPattern: config!.folderNamingPattern,
     storageClass: config!.destination.storageClass,
     accessKeyId: config!.destination.accessKeyId,
-    secretAccessKey: ''
+    secretAccessKey: '',
+    googleClientId: '',
+    googleClientSecret: ''
   })
   // The saved secret stays in the main process; until it's edited, the field shows a mask of its length.
   const [secretEdited, setSecretEdited] = useState(false)
@@ -58,7 +60,8 @@ function SettingsForm(): React.JSX.Element {
         folderNamingPattern: values.folderNamingPattern,
         storageClass: values.storageClass,
         awsAccessKeyId: values.accessKeyId,
-        ...(secretEdited && { awsSecretAccessKey: values.secretAccessKey })
+        ...(secretEdited && { awsSecretAccessKey: values.secretAccessKey }),
+        ...(googleClientEntered && { googleClient: typedGoogleClient })
       }
       try {
         const result = await api.config.save(input)
@@ -74,12 +77,21 @@ function SettingsForm(): React.JSX.Element {
     })
   }
 
+  // First-time setup: the OAuth client is typed here, then saved when signing in (or on Save).
+  const typedGoogleClient = {
+    clientId: values.googleClientId.trim(),
+    clientSecret: values.googleClientSecret.trim()
+  }
+  const googleClientEntered = !!(typedGoogleClient.clientId || typedGoogleClient.clientSecret)
+
   const signIn = (): Promise<void> =>
     act(async (api) => {
       setSigningIn(true)
       setSignInError(null)
       try {
-        const result = await api.google.signIn()
+        const result = await api.google.signIn(
+          config!.google.clientConfigured ? undefined : typedGoogleClient
+        )
         if (result.ok) await reloadConfig()
         else setSignInError(result.error)
       } finally {
@@ -106,160 +118,259 @@ function SettingsForm(): React.JSX.Element {
   return (
     <Modal title="Settings" onDismiss={exit}>
       <form className="settings" onSubmit={save} noValidate>
-        {/* Google drive credentials */}
-        <fieldset>
-          <legend>Google drive credentials</legend>
-          {!google.clientConfigured ? (
-            <p className="hint">
-              Google Drive not configured. Set {google.missingEnv.join(' and ')} and restart
-              photobackup.
-            </p>
-          ) : (
-            <div className="row">
-              <span>{google.signedIn ? 'Signed in to Google' : 'Not signed in'}</span>
-              <button type="button" className="secondary" onClick={signIn} disabled={signingIn}>
-                {signingIn
-                  ? 'Waiting for Google…'
-                  : google.signedIn
-                    ? 'Sign in again'
-                    : 'Sign in with Google'}
-              </button>
+        <div className="settings-grid">
+          <section className="settings-section" aria-labelledby="settings-source">
+            <h3 id="settings-source" className="section-title">
+              Source
+            </h3>
+
+            <div className="field-stack">
+              {/* Google drive credentials */}
+              <fieldset className="field-group">
+                <legend className="label-xs">Google drive credentials</legend>
+                {!google.clientConfigured ? (
+                  <>
+                    <div className="pair">
+                      <div className="field-tight">
+                        <label htmlFor="googleClientId" className="sub-label">
+                          Client ID
+                        </label>
+                        <input
+                          id="googleClientId"
+                          autoComplete="off"
+                          spellCheck={false}
+                          placeholder="From Google Cloud"
+                          value={values.googleClientId}
+                          onChange={set('googleClientId')}
+                          aria-invalid={!!errors.googleClient}
+                          aria-describedby={describedBy('googleClient')}
+                        />
+                      </div>
+                      <div className="field-tight">
+                        <label htmlFor="googleClientSecret" className="sub-label">
+                          Client secret
+                        </label>
+                        <input
+                          id="googleClientSecret"
+                          type="password"
+                          autoComplete="new-password"
+                          value={values.googleClientSecret}
+                          onChange={set('googleClientSecret')}
+                          aria-invalid={!!errors.googleClient}
+                          aria-describedby={describedBy('googleClient')}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        className="btn small"
+                        onClick={signIn}
+                        disabled={
+                          signingIn ||
+                          !typedGoogleClient.clientId ||
+                          !typedGoogleClient.clientSecret
+                        }
+                      >
+                        {signingIn ? 'Waiting for Google…' : 'Sign in with Google'}
+                      </button>
+                    </div>
+                    {errorFor('googleClient')}
+                  </>
+                ) : (
+                  <div className="with-button">
+                    <div className="field-tight">
+                      <label htmlFor="googleAccount" className="sub-label">
+                        Signed in as
+                      </label>
+                      <input
+                        id="googleAccount"
+                        readOnly
+                        value={google.signedIn ? (google.accountName ?? 'Google account') : ''}
+                        placeholder="Not signed in"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="btn small"
+                      onClick={signIn}
+                      disabled={signingIn}
+                    >
+                      {signingIn
+                        ? 'Waiting for Google…'
+                        : google.signedIn
+                          ? 'Sign in again'
+                          : 'Sign in with Google'}
+                    </button>
+                  </div>
+                )}
+                {signInError && (
+                  <p role="alert" className="field-error">
+                    {signInError}
+                  </p>
+                )}
+              </fieldset>
+
+              {/* Default Google drive location */}
+              <div className="field">
+                <label htmlFor="googleDriveLocation" className="label-xs">
+                  Default Google drive location
+                </label>
+                <input
+                  id="googleDriveLocation"
+                  placeholder="https://drive.google.com/drive/folders/…"
+                  spellCheck={false}
+                  value={values.googleDriveLocation}
+                  onChange={set('googleDriveLocation')}
+                  aria-invalid={!!errors.googleDriveLocation}
+                  aria-describedby={describedBy('googleDriveLocation')}
+                />
+                {errorFor('googleDriveLocation')}
+              </div>
             </div>
-          )}
-          {signInError && (
-            <p role="alert" className="field-error">
-              {signInError}
-            </p>
-          )}
-        </fieldset>
 
-        {/* AWS credentials */}
-        <fieldset>
-          <legend>AWS credentials</legend>
-          <label htmlFor="accessKeyId">Access key ID</label>
-          <input
-            id="accessKeyId"
-            autoComplete="off"
-            spellCheck={false}
-            value={values.accessKeyId}
-            onChange={set('accessKeyId')}
-            aria-invalid={!!errors.awsAccessKeyId}
-            aria-describedby={describedBy('awsAccessKeyId')}
-          />
-          {errorFor('awsAccessKeyId')}
-          <label htmlFor="secretAccessKey">Secret access key</label>
-          <input
-            id="secretAccessKey"
-            type="password"
-            autoComplete="new-password"
-            value={secretEdited ? values.secretAccessKey : secretMask}
-            // Typing replaces the masked secret rather than editing the mask.
-            onFocus={(e) => !secretEdited && e.target.select()}
-            onChange={(e) => {
-              // AWS secrets never contain "*", so anything left of the mask is dropped.
-              const value = secretEdited ? e.target.value : e.target.value.replace(/\*/g, '')
-              setSecretEdited(true)
-              setValues((v) => ({ ...v, secretAccessKey: value }))
-            }}
-            aria-invalid={!!errors.awsSecretAccessKey}
-            aria-describedby={describedBy('awsSecretAccessKey')}
-          />
-          {errorFor('awsSecretAccessKey')}
-        </fieldset>
+            {/* Default local folder */}
+            <div className="field">
+              <label htmlFor="localFolder" className="label-xs">
+                Default local folder
+              </label>
+              <div className="with-button">
+                <input
+                  id="localFolder"
+                  spellCheck={false}
+                  value={values.localFolder}
+                  onChange={set('localFolder')}
+                  aria-invalid={!!errors.localFolder}
+                  aria-describedby={describedBy('localFolder')}
+                />
+                <button type="button" className="btn small" onClick={browse}>
+                  Browse…
+                </button>
+              </div>
+              {errorFor('localFolder')}
+            </div>
+          </section>
 
-        {/* Default Google drive location */}
-        <div className="field">
-          <label htmlFor="googleDriveLocation">Default Google drive location</label>
-          <input
-            id="googleDriveLocation"
-            placeholder="https://drive.google.com/drive/folders/…"
-            spellCheck={false}
-            value={values.googleDriveLocation}
-            onChange={set('googleDriveLocation')}
-            aria-invalid={!!errors.googleDriveLocation}
-            aria-describedby={describedBy('googleDriveLocation')}
-          />
-          {errorFor('googleDriveLocation')}
+          <section className="settings-section" aria-labelledby="settings-destination">
+            <h3 id="settings-destination" className="section-title">
+              Destination
+            </h3>
+
+            <div className="field-stack">
+              {/* AWS credentials */}
+              <fieldset className="field-group">
+                <legend className="label-xs">AWS credentials</legend>
+                <div className="pair">
+                  <div className="field-tight">
+                    <label htmlFor="accessKeyId" className="sub-label">
+                      Access key ID
+                    </label>
+                    <input
+                      id="accessKeyId"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={values.accessKeyId}
+                      onChange={set('accessKeyId')}
+                      aria-invalid={!!errors.awsAccessKeyId}
+                      aria-describedby={describedBy('awsAccessKeyId')}
+                    />
+                  </div>
+                  <div className="field-tight">
+                    <label htmlFor="secretAccessKey" className="sub-label">
+                      Secret access key
+                    </label>
+                    <input
+                      id="secretAccessKey"
+                      type="password"
+                      autoComplete="new-password"
+                      value={secretEdited ? values.secretAccessKey : secretMask}
+                      // Typing replaces the masked secret rather than editing the mask.
+                      onFocus={(e) => !secretEdited && e.target.select()}
+                      onChange={(e) => {
+                        // AWS secrets never contain "*", so anything left of the mask is dropped.
+                        const value = secretEdited
+                          ? e.target.value
+                          : e.target.value.replace(/\*/g, '')
+                        setSecretEdited(true)
+                        setValues((v) => ({ ...v, secretAccessKey: value }))
+                      }}
+                      aria-invalid={!!errors.awsSecretAccessKey}
+                      aria-describedby={describedBy('awsSecretAccessKey')}
+                    />
+                  </div>
+                </div>
+                {errorFor('awsAccessKeyId')}
+                {errorFor('awsSecretAccessKey')}
+              </fieldset>
+
+              {/* Default AWS location */}
+              <div className="field">
+                <label htmlFor="awsLocation" className="label-xs">
+                  Default AWS location
+                </label>
+                <input
+                  id="awsLocation"
+                  placeholder="https://my-bucket.s3.eu-west-2.amazonaws.com/photos"
+                  spellCheck={false}
+                  value={values.awsLocation}
+                  onChange={set('awsLocation')}
+                  aria-invalid={!!errors.awsLocation}
+                  aria-describedby={describedBy('awsLocation')}
+                />
+                {errorFor('awsLocation')}
+              </div>
+
+              {/* AWS storage class */}
+              <div className="field">
+                <label htmlFor="storageClass" className="label-xs">
+                  AWS storage class
+                </label>
+                <select
+                  id="storageClass"
+                  value={values.storageClass}
+                  onChange={set('storageClass')}
+                  aria-invalid={!!errors.storageClass}
+                  aria-describedby={describedBy('storageClass')}
+                >
+                  {STORAGE_CLASSES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+                {errorFor('storageClass')}
+              </div>
+            </div>
+
+            {/* Folder naming convention */}
+            <div className="field">
+              <label htmlFor="folderNamingPattern" className="label-xs">
+                Folder naming convention
+              </label>
+              <input
+                id="folderNamingPattern"
+                spellCheck={false}
+                value={values.folderNamingPattern}
+                onChange={set('folderNamingPattern')}
+                aria-invalid={!!errors.folderNamingPattern}
+                aria-describedby={describedBy('folderNamingPattern', 'pattern-hint')}
+              />
+              <p id="pattern-hint" className="hint">
+                {surname
+                  ? `Name (${name}) and surname (${surname}) are sourced from the logged in user.`
+                  : `Name (${name}) is sourced from the logged in user; no surname was found.`}{' '}
+                Year and month come from the backup month you choose.
+              </p>
+              {errorFor('folderNamingPattern')}
+            </div>
+          </section>
         </div>
 
-        {/* Default AWS location */}
-        <div className="field">
-          <label htmlFor="awsLocation">Default AWS location</label>
-          <input
-            id="awsLocation"
-            placeholder="https://my-bucket.s3.eu-west-2.amazonaws.com/photos"
-            spellCheck={false}
-            value={values.awsLocation}
-            onChange={set('awsLocation')}
-            aria-invalid={!!errors.awsLocation}
-            aria-describedby={describedBy('awsLocation')}
-          />
-          {errorFor('awsLocation')}
-        </div>
-
-        {/* Default local folder */}
-        <div className="field">
-          <label htmlFor="localFolder">Default local folder</label>
-          <div className="row">
-            <input
-              id="localFolder"
-              spellCheck={false}
-              value={values.localFolder}
-              onChange={set('localFolder')}
-              aria-invalid={!!errors.localFolder}
-              aria-describedby={describedBy('localFolder')}
-            />
-            <button type="button" className="secondary" onClick={browse}>
-              Browse…
-            </button>
-          </div>
-          {errorFor('localFolder')}
-        </div>
-
-        {/* Folder naming convention */}
-        <div className="field">
-          <label htmlFor="folderNamingPattern">Folder naming convention</label>
-          <input
-            id="folderNamingPattern"
-            spellCheck={false}
-            value={values.folderNamingPattern}
-            onChange={set('folderNamingPattern')}
-            aria-invalid={!!errors.folderNamingPattern}
-            aria-describedby={describedBy('folderNamingPattern', 'pattern-hint')}
-          />
-          <p id="pattern-hint" className="hint">
-            {surname
-              ? `Name (${name}) and surname (${surname}) are sourced from the logged in user.`
-              : `Name (${name}) is sourced from the logged in user; no surname was found.`}{' '}
-            Year and month come from the backup month you choose.
-          </p>
-          {errorFor('folderNamingPattern')}
-        </div>
-
-        {/* AWS storage class */}
-        <div className="field">
-          <label htmlFor="storageClass">AWS storage class</label>
-          <select
-            id="storageClass"
-            value={values.storageClass}
-            onChange={set('storageClass')}
-            aria-invalid={!!errors.storageClass}
-            aria-describedby={describedBy('storageClass')}
-          >
-            {STORAGE_CLASSES.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-          {errorFor('storageClass')}
-        </div>
-
-        <div className="actions">
-          <button type="submit" className="primary" disabled={saving}>
+        <div className="settings-footer">
+          <button type="submit" className="btn primary" disabled={saving}>
             Save
           </button>
-          <button type="button" className="secondary" onClick={exit}>
+          <button type="button" className="btn" onClick={exit}>
             Exit without saving
           </button>
         </div>

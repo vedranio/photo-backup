@@ -10,6 +10,8 @@ export interface SourceView {
   location: string
   /** Credentials are never sent to the renderer; only whether they exist. */
   hasCredentials: boolean
+  /** A friendlier name for `location` when one is known, e.g. a Drive folder's name. */
+  displayLocation?: string
   /** Ready to back up from. When false, `notConfiguredReason` says why. */
   configured: boolean
   notConfiguredReason?: string
@@ -26,12 +28,19 @@ export interface DestinationView {
   secretAccessKeyLength: number
 }
 
+export interface GoogleClient {
+  clientId: string
+  clientSecret: string
+}
+
 export interface GoogleStatus {
-  /** The OAuth client ID and secret are set in the environment. */
+  /** An OAuth client ID and secret are set: entered in Settings, or in the environment. */
   clientConfigured: boolean
   /** Environment variables that still need setting. */
   missingEnv: string[]
   signedIn: boolean
+  /** The signed-in Google account's name, when it could be looked up. */
+  accountName?: string
 }
 
 export interface Identity {
@@ -62,6 +71,8 @@ export interface SettingsInput {
   awsAccessKeyId: string
   /** Omit to keep the saved secret. */
   awsSecretAccessKey?: string
+  /** The Google OAuth client, entered the first time. Omit to keep the saved one. */
+  googleClient?: GoogleClient
 }
 
 export type SettingsField = keyof SettingsInput
@@ -71,10 +82,11 @@ export type SaveResult =
 
 export type SignInResult = { ok: true } | { ok: false; error: string }
 
-export type StageId = 'download' | 'compress' | 'upload' | 'cleanup'
+export type StageId = 'download' | 'local' | 'compress' | 'upload' | 'cleanup'
 
 export const STAGE_LABELS: Record<StageId, string> = {
-  download: 'Downloading from Google Drive',
+  download: 'Downloading from Google',
+  local: 'Getting local files',
   compress: 'Compressing',
   upload: 'Uploading to AWS',
   cleanup: 'Cleaning up'
@@ -109,6 +121,8 @@ export interface BackupSnapshot {
   currentStage: StageId | null
   result?: BackupResult
   error?: string
+  /** The run's backup month, "YYYY-MM". Absent when idle. */
+  month?: string
 }
 
 export interface Api {
@@ -118,7 +132,8 @@ export interface Api {
     chooseLocalFolder(): Promise<string | null>
   }
   google: {
-    signIn(): Promise<SignInResult>
+    /** Signs in to Google, first saving `client` when given (the first-time setup). */
+    signIn(client?: GoogleClient): Promise<SignInResult>
   }
   backup: {
     getStatus(): Promise<BackupSnapshot>

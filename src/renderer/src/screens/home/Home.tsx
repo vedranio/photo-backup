@@ -22,8 +22,7 @@ export function Home(): React.JSX.Element | null {
     forced && HOME_STATES.has(forced) ? (forced as HomeStateId) : HOME_STATE_FOR[snapshot.status]
 
   return (
-    <main className="home">
-      <h1 className="visually-hidden">photobackup</h1>
+    <main className="screen">
       {state === STATES.homeDefault && <DefaultState />}
       {state === STATES.homeInProgress && <InProgressState snapshot={snapshot} />}
       {state === STATES.homeSuccessful && <SuccessfulState snapshot={snapshot} />}

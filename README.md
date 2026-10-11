@@ -14,17 +14,20 @@ Built with Electron, React and TypeScript.
 ### Backing up
 
 1. **Select items to back up:** tick **Local folder** and/or **Google Drive**. Their locations come from
-   Settings, and an item can only be ticked once it's set up.
-2. **Set backup month:** defaults to last month (backups usually run at the start of the next month). The
-   month names the zip.
-3. Click **Back up**.
-4. Optionally tick **Clean up after backup** to move the backed-up files to the trash once the upload has
-   succeeded. Local files go to the macOS Trash, and Drive files to Drive's trash. Nothing is permanently
-   deleted.
+   Settings (Google Drive shows the folder's name), and an item can only be ticked once it's set up.
+2. Optionally tick **Clean up after backup**, under the items, to move the backed-up files to the trash once
+   the upload has succeeded. Local files go to the macOS Trash, and Drive files to Drive's trash. Nothing is
+   permanently deleted.
+3. **Set backup month:** a five-month scale with a red index over the chosen month. It defaults to last month
+   (backups usually run at the start of the next month), and can't go past the current month. Click a month,
+   or use ← and →; choosing the leftmost month walks the scale further back. The month names the zip.
+4. Click **Back up**.
 
-While it runs, each stage shows its progress: _Downloading from Google Drive_ → _Compressing_ →
-_Uploading to AWS_ → _Cleaning up_. You can **Pause backup** and resume, or **Cancel backup**. If a backup
-fails, the error is shown and **Retry** carries on from the stage that failed.
+While it runs, each stage shows its progress on a tick scale: _Downloading from Google_ → _Getting local
+files_ → _Compressing_ → _Uploading to AWS_ → _Cleaning up_. Only the stages that apply are shown: the first
+two appear only for the items you ticked, and _Cleaning up_ only if you chose to clean up. You can **Pause
+backup** and resume, or **Cancel backup**. If a backup fails, the error is shown and **Retry** carries on from
+the stage that failed. When it succeeds, the zip's S3 location is shown with a button to copy it.
 
 ### Naming
 
@@ -44,18 +47,24 @@ fails with a message saying so, and the existing file is left alone.
 
 ### Settings
 
-| Setting                       | What it is                                                                                                         |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Google drive credentials      | **Sign in with Google**. Needs the OAuth client set up below.                                                      |
-| AWS credentials               | The access key ID (shown) and secret access key (hidden).                                                          |
-| Default Google drive location | A Drive folder's URL, e.g. `https://drive.google.com/drive/folders/…`, or its ID.                                  |
-| Default AWS location          | The bucket's link from the S3 console, or an S3 URL such as `https://my-bucket.s3.eu-west-2.amazonaws.com/photos`. |
-| Default local folder          | The folder to back up. Use **Browse…** to pick it.                                                                 |
-| Folder naming convention      | The naming pattern, as described above.                                                                            |
-| AWS storage class             | Defaults to **Glacier Deep Archive**.                                                                              |
+| Setting                       | What it is                                                                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Google drive credentials      | The first time, the OAuth **Client ID** and **Client secret** (set up below), then **Sign in with Google**. Afterwards, who you're signed in as. |
+| AWS credentials               | The access key ID (shown) and secret access key (hidden).                                                                                        |
+| Default Google drive location | A Drive folder's URL, e.g. `https://drive.google.com/drive/folders/…`, or its ID.                                                                |
+| Default AWS location          | The bucket's link from the S3 console, or an S3 URL such as `https://my-bucket.s3.eu-west-2.amazonaws.com/photos`.                               |
+| Default local folder          | The folder to back up. Use **Browse…** to pick it.                                                                                               |
+| Folder naming convention      | The naming pattern, as described above.                                                                                                          |
+| AWS storage class             | Defaults to **Glacier Deep Archive**.                                                                                                            |
 
-Credentials (the Google sign-in and the AWS keys) are encrypted on your machine with the operating system's
-secure storage, and never leave the app's main process.
+Settings groups these under **Source** (Google Drive and the local folder) and **Destination** (AWS and the
+naming convention). Credentials (the Google client and sign-in, and the AWS keys) are encrypted on your machine
+with the operating system's secure storage, and never leave the app's main process.
+
+### The window
+
+The interface is a fixed 760 × 640. Making the window larger centres it, with a light border, over a fine
+pebbled background; the window can't be made smaller.
 
 ## Setup
 
@@ -94,21 +103,18 @@ client once, and the app's **Sign in with Google** turns it into a long-lived si
      "Google hasn't verified this app" warning when you sign in.
 4. **Create the client.** Go to **Clients → Create client**, with the application type **Desktop app**.
    Copy the **Client ID** and **Client secret**.
-5. **Give them to the app.** Copy `.env.example` to `.env` (which is git-ignored) and fill it in:
+5. **Sign in.** Open **Settings**. Under **Google drive credentials**, paste the **Client ID** and **Client
+   secret**, then click **Sign in with Google**. In the browser, click **Advanced → Go to photobackup (unsafe)**
+   on the unverified-app warning (it's your own app), then **Allow**. The client is saved (encrypted), so this
+   is only needed once; afterwards Settings shows who you're signed in as. Then set **Default Google drive
+   location** and click **Save**.
 
-   ```
-   GOOGLE_OAUTH_CLIENT_ID=…apps.googleusercontent.com
-   GOOGLE_OAUTH_CLIENT_SECRET=…
-   ```
+   Alternatively, provide the client through the environment instead of typing it in: `GOOGLE_OAUTH_CLIENT_ID`
+   and `GOOGLE_OAUTH_CLIENT_SECRET` in your shell, in a git-ignored `.env` (copy `.env.example`), or for a
+   packaged app in `~/Library/Application Support/photobackup/.env` or
+   `/Library/Application Support/photobackup/.env`. A client entered in Settings takes precedence.
 
-   Or export both variables in your shell profile instead. Variables set in the shell take precedence over
-   `.env`.
-
-6. **Sign in.** Restart the app, open **Settings**, and click **Sign in with Google**. In the browser, click
-   **Advanced → Go to photobackup (unsafe)** on the unverified-app warning (it's your own app), then
-   **Allow**. Then set **Default Google drive location** and click **Save**.
-
-Until both variables are set, the app shows "Google Drive not configured". You can revoke access at any time
+You can revoke access at any time under **Google Account → Security → Third-party apps & services**.
 under **Google Account → Security → Third-party apps & services**.
 
 ### AWS S3
@@ -164,11 +170,23 @@ cancelled. Leftovers from a quit or crash are cleaned up the next time the app s
 ### Packaged app
 
 ```bash
-npm run build:mac
+npm run package:mac
 ```
 
-A packaged app opened from Finder doesn't see shell variables or the project's `.env`. Put the Google variables
-in `~/Library/Application Support/photobackup/.env` instead. Packaging hasn't been tested yet.
+This builds `dist/mac-arm64/photobackup.app` and signs it ad hoc, so it runs without an Apple Developer
+account. Copy it into `/Applications` to make it available to every user on the Mac:
+
+```bash
+ditto dist/mac-arm64/photobackup.app /Applications/photobackup.app
+```
+
+A copy built and installed on the same Mac opens normally. A copy downloaded from elsewhere is quarantined by
+macOS; allow it once under **System Settings → Privacy & Security → Open Anyway**.
+
+A packaged app opened from Finder doesn't see shell variables or the project's `.env`. It reads the Google
+variables from `~/Library/Application Support/photobackup/.env` (one user), or from
+`/Library/Application Support/photobackup/.env` (every user on the Mac). Each user still signs in with their own
+Google account, and each user's settings, credentials and database are kept separately.
 
 ## Development
 

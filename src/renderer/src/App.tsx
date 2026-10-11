@@ -21,34 +21,36 @@ function ForcedStateRoute(): null {
 function App(): React.JSX.Element {
   return (
     <HashRouter>
-      <AppStateProvider>
-        {import.meta.env.DEV && <ForcedStateRoute />}
-        <Routes>
-          <Route path="/" element={<Navigate to={ROUTES.splash} replace />} />
-          <Route path={ROUTES.splash} element={<Splash />} />
-          <Route path={ROUTES.home} element={<Home />} />
-          {/* Settings and Confirm cancel are modals over Home. */}
-          <Route
-            path={ROUTES.settings}
-            element={
-              <>
-                <Home />
-                <Settings />
-              </>
-            }
-          />
-          <Route
-            path={ROUTES.confirmCancel}
-            element={
-              <>
-                <Home />
-                <ConfirmCancel />
-              </>
-            }
-          />
-          <Route path="*" element={<Navigate to={ROUTES.splash} replace />} />
-        </Routes>
-      </AppStateProvider>
+      <div className="app-frame">
+        <AppStateProvider>
+          {import.meta.env.DEV && <ForcedStateRoute />}
+          <Routes>
+            <Route path="/" element={<Navigate to={ROUTES.splash} replace />} />
+            <Route path={ROUTES.splash} element={<Splash />} />
+            <Route path={ROUTES.home} element={<Home />} />
+            {/* Settings and Confirm cancel are modals over Home. */}
+            <Route
+              path={ROUTES.settings}
+              element={
+                <>
+                  <Home />
+                  <Settings />
+                </>
+              }
+            />
+            <Route
+              path={ROUTES.confirmCancel}
+              element={
+                <>
+                  <Home />
+                  <ConfirmCancel />
+                </>
+              }
+            />
+            <Route path="*" element={<Navigate to={ROUTES.splash} replace />} />
+          </Routes>
+        </AppStateProvider>
+      </div>
     </HashRouter>
   )
 }

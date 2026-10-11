@@ -5,10 +5,12 @@ interface Props {
   /** Esc: the modal's non-destructive way out. */
   onDismiss(): void
   children: ReactNode
+  /** A small confirmation dialog rather than a form. */
+  narrow?: boolean
 }
 
 /** A native modal <dialog>: focus is trapped inside and the page behind is inert. */
-export function Modal({ title, onDismiss, children }: Props): React.JSX.Element {
+export function Modal({ title, onDismiss, children, narrow }: Props): React.JSX.Element {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   useEffect(() => {
@@ -19,7 +21,7 @@ export function Modal({ title, onDismiss, children }: Props): React.JSX.Element 
   return (
     <dialog
       ref={ref}
-      className="modal"
+      className={narrow ? 'modal narrow' : 'modal'}
       aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault()

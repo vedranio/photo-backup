@@ -18,6 +18,9 @@ export interface DriveApi {
   listFiles(folderId: string, signal: AbortSignal): Promise<DriveFile[]>
   download(file: DriveFile, dest: string, signal: AbortSignal): Promise<void>
   trash(fileId: string): Promise<void>
+  /** The signed-in account's display name (or email). */
+  accountName(): Promise<string | undefined>
+  folderName(folderId: string): Promise<string | undefined>
 }
 
 const FOLDER = 'application/vnd.google-apps.folder'
@@ -87,6 +90,16 @@ export function createDriveApi(auth: OAuth2Client): DriveApi {
 
     async trash(fileId) {
       await drive.files.update({ fileId, requestBody: { trashed: true } })
+    },
+
+    async accountName() {
+      const res = await drive.about.get({ fields: 'user(displayName, emailAddress)' })
+      return res.data.user?.displayName || res.data.user?.emailAddress || undefined
+    },
+
+    async folderName(folderId) {
+      const res = await drive.files.get({ fileId: folderId, fields: 'name' })
+      return res.data.name || undefined
     }
   }
 }

@@ -4,6 +4,7 @@ import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { SettingsInput } from '@shared/api'
 import { openDb } from '../db'
+import { sources } from '../db/schema'
 import type { SecretBox } from '../secrets'
 import { ConfigService, GOOGLE_NOT_CONFIGURED } from './service'
 import type { GoogleClientEnv } from '../google/oauth'
@@ -160,5 +161,52 @@ describe('ConfigService', () => {
     expect(service.save({ ...validInput(), storageClass: 'GLACIER_IR' })).toEqual({ ok: true })
     expect(service.getView().destination.storageClass).toBe('GLACIER_IR')
     expect(service.getBackupConfig().destination.storageClass).toBe('GLACIER_IR')
+  })
+
+  it('takes the Google OAuth client from Settings, ahead of the environment', () => {
+    expect(service.getView().google.clientConfigured).toBe(false)
+    const client = { clientId: '123-abc.apps.googleusercontent.com', clientSecret: 'GOCSPX-x' }
+    expect(service.save({ ...validInput(), googleClient: client })).toEqual({ ok: true })
+    expect(service.getView().google).toMatchObject({ clientConfigured: true, signedIn: false })
+    env = { clientId: 'env-id', clientSecret: 'env-secret' }
+    expect(service.googleClient()).toEqual(client)
+    expect(JSON.stringify(service.getView())).not.toContain('GOCSPX-x')
+  })
+
+  it('validates the Google OAuth client', () => {
+    const bad = service.save({
+      ...validInput(),
+      googleClient: { clientId: 'nope', clientSecret: 's' }
+    })
+    expect(bad).toEqual({
+      ok: false,
+      errors: { googleClient: 'The client ID ends in .apps.googleusercontent.com' }
+    })
+    const missing = service.save({
+      ...validInput(),
+      googleClient: { clientId: '1.apps.googleusercontent.com', clientSecret: ' ' }
+    })
+    expect(missing.ok).toBe(false)
+  })
+
+  it('keeps the sign-in with the same client, and drops it when the client changes', () => {
+    const client = { clientId: '1.apps.googleusercontent.com', clientSecret: 's1' }
+    service.setGoogleClient(client)
+    service.setGoogleRefreshToken('rt')
+    service.setGoogleClient(client)
+    expect(service.getView().google.signedIn).toBe(true)
+    service.setGoogleClient({ ...client, clientSecret: 's2' })
+    expect(service.getView().google.signedIn).toBe(false)
+  })
+
+  it('reads a sign-in saved before the client could be entered in Settings', () => {
+    env = { clientId: 'id', clientSecret: 'secret' }
+    // The old format: the encrypted refresh token on its own.
+    service['db']
+      .update(sources)
+      .set({ credentials: fakeBox.encrypt('legacy-rt') })
+      .run()
+    expect(service.getView().google.signedIn).toBe(true)
+    expect(service.getBackupConfig().sources[1].credentials).toBe('legacy-rt')
   })
 })

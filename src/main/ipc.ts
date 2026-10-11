@@ -1,16 +1,15 @@
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
-import type { BackupRequest, SettingsInput, SignInResult } from '@shared/api'
+import type { BackupRequest, GoogleClient, SettingsInput, SignInResult } from '@shared/api'
 import { IPC } from '@shared/ipc'
-import type { ConfigService } from './config/service'
+import { validateGoogleClient, type ConfigService } from './config/service'
 import type { BackupJob } from './backup/job'
-import { missingGoogleEnv, signInWithGoogle, type GoogleClientEnv } from './google/oauth'
+import { missingGoogleEnv, signInWithGoogle } from './google/oauth'
+import type { GoogleInfo } from './google/info'
 
-export function registerIpc(
-  config: ConfigService,
-  job: BackupJob,
-  googleEnv: () => GoogleClientEnv
-): void {
-  ipcMain.handle(IPC.configGet, () => config.getView())
+export function registerIpc(config: ConfigService, job: BackupJob, googleInfo: GoogleInfo): void {
+  ipcMain.handle(IPC.configGet, () =>
+    googleInfo.decorate(config.getView(), config.getBackupConfig())
+  )
   ipcMain.handle(IPC.configSave, (_e, input: SettingsInput) => config.save(input))
   ipcMain.handle(IPC.configChooseLocalFolder, async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender)
@@ -21,12 +20,17 @@ export function registerIpc(
     return res.canceled ? null : (res.filePaths[0] ?? null)
   })
 
-  ipcMain.handle(IPC.googleSignIn, async (): Promise<SignInResult> => {
-    const env = googleEnv()
-    const missing = missingGoogleEnv(env)
-    if (missing.length)
-      return { ok: false, error: `Google Drive not configured: set ${missing.join(' and ')}` }
+  ipcMain.handle(IPC.googleSignIn, async (_e, client?: GoogleClient): Promise<SignInResult> => {
     try {
+      if (client) {
+        const invalid = validateGoogleClient(client).googleClient
+        if (invalid) return { ok: false, error: invalid }
+        config.setGoogleClient(client)
+      }
+      const env = config.googleClient()
+      if (missingGoogleEnv(env).length) {
+        return { ok: false, error: 'Enter the Google OAuth client ID and secret first' }
+      }
       config.setGoogleRefreshToken(await signInWithGoogle(env, (url) => shell.openExternal(url)))
       return { ok: true }
     } catch (err) {
