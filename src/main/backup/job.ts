@@ -63,7 +63,8 @@ export class BackupJob {
       stages: this.stages.map((s) => ({ ...s })),
       currentStage: this.currentStage,
       ...(this.result && { result: this.result }),
-      ...(this.error && { error: this.error })
+      ...(this.error && { error: this.error }),
+      ...(this.run && { month: this.run.request.month })
     }
   }
 

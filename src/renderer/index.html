@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <title>photobackup</title>
@@ -9,6 +9,15 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
     />
+    <!-- Dark from the very first paint, before the stylesheet loads. -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #0a0a0a;
+        color-scheme: dark;
+      }
+    </style>
   </head>
 
   <body>

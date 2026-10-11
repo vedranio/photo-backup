@@ -9,6 +9,8 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!{.design,.claude,docs,CLAUDE.md,drizzle.config.ts,vite.web.config.ts,vitest.config.ts}'
+  - '!**/*.test.ts'
 asarUnpack:
   - resources/**
 # Drizzle migrations, applied at startup (see src/main/index.ts).
@@ -24,9 +26,9 @@ nsis:
   createDesktopShortcut: always
 mac:
   entitlementsInherit: build/entitlements.mac.plist
+  # No Apple Developer ID: skip signing here, then ad-hoc sign the app (see package:mac).
+  identity: null
   extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false

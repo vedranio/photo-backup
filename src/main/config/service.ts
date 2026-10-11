@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import type {
   AwsCredentials,
   ConfigView,
+  GoogleClient,
   GoogleStatus,
   Identity,
   SaveResult,
@@ -21,6 +22,27 @@ import { missingGoogleEnv, type GoogleClientEnv } from '../google/oauth'
 type SourceRow = typeof sources.$inferSelect
 
 export const GOOGLE_NOT_CONFIGURED = 'Google Drive not configured'
+
+/** What the Google Drive source's (encrypted) credentials hold. */
+interface GoogleCredentials {
+  refreshToken?: string
+  clientId?: string
+  clientSecret?: string
+}
+
+const GOOGLE_CLIENT_ID_RE = /^[\w.-]+\.apps\.googleusercontent\.com$/
+
+export function validateGoogleClient(
+  client: GoogleClient
+): Partial<Record<'googleClient', string>> {
+  if (!client.clientId.trim() || !client.clientSecret.trim()) {
+    return { googleClient: 'Enter both the client ID and the client secret' }
+  }
+  if (!GOOGLE_CLIENT_ID_RE.test(client.clientId.trim())) {
+    return { googleClient: 'The client ID ends in .apps.googleusercontent.com' }
+  }
+  return {}
+}
 
 /** Everything the backup engine needs, with credentials decrypted. Main process only. */
 export interface BackupConfig {
@@ -77,13 +99,58 @@ export class ConfigService {
     )
   }
 
+  private googleCredentials(): GoogleCredentials {
+    const stored = this.sourceRows().find((s) => s.type === 'remote')?.credentials
+    if (!stored) return {}
+    const plain = this.secrets.decrypt(stored)
+    try {
+      const parsed: unknown = JSON.parse(plain)
+      if (parsed && typeof parsed === 'object') return parsed as GoogleCredentials
+    } catch {
+      // Saved before the client could be entered in Settings: just the refresh token.
+    }
+    return { refreshToken: plain }
+  }
+
+  private setGoogleCredentials(next: GoogleCredentials): void {
+    if (!this.secrets.available()) {
+      throw new Error('Secure storage is unavailable on this machine, so Google can’t be set up')
+    }
+    this.db
+      .update(sources)
+      .set({ credentials: this.secrets.encrypt(JSON.stringify(next)) })
+      .where(eq(sources.type, 'remote'))
+      .run()
+  }
+
+  /** The OAuth client to sign in with: the one entered in Settings, else the environment's. */
+  googleClient(): GoogleClientEnv {
+    const saved = this.googleCredentials()
+    if (saved.clientId && saved.clientSecret) {
+      return { clientId: saved.clientId, clientSecret: saved.clientSecret }
+    }
+    return this.googleEnv()
+  }
+
+  /** Saves the OAuth client. A different client invalidates the sign-in made with the old one. */
+  setGoogleClient(client: GoogleClient): void {
+    const saved = this.googleCredentials()
+    const clientId = client.clientId.trim()
+    const clientSecret = client.clientSecret.trim()
+    const same = saved.clientId === clientId && saved.clientSecret === clientSecret
+    this.setGoogleCredentials({
+      clientId,
+      clientSecret,
+      ...(same && saved.refreshToken && { refreshToken: saved.refreshToken })
+    })
+  }
+
   googleStatus(): GoogleStatus {
-    const missingEnv = missingGoogleEnv(this.googleEnv())
-    const remote = this.sourceRows().find((s) => s.type === 'remote')
+    const missingEnv = missingGoogleEnv(this.googleClient())
     return {
       clientConfigured: missingEnv.length === 0,
       missingEnv,
-      signedIn: !!remote?.credentials
+      signedIn: !!this.googleCredentials().refreshToken
     }
   }
 
@@ -121,7 +188,7 @@ export class ConfigService {
         type: row.type,
         name: row.name,
         location: row.location,
-        hasCredentials: !!row.credentials,
+        hasCredentials: row.type === 'remote' ? google.signedIn : !!row.credentials,
         ...this.readiness(row, google)
       })),
       destination: {
@@ -153,6 +220,13 @@ export class ConfigService {
     if (!isStorageClass(input.storageClass)) errors.storageClass = 'Choose a storage class'
     const patternError = validatePattern(input.folderNamingPattern)
     if (patternError) errors.folderNamingPattern = patternError
+    if (input.googleClient) {
+      Object.assign(errors, validateGoogleClient(input.googleClient))
+      if (!errors.googleClient && !this.secrets.available()) {
+        errors.googleClient =
+          'Secure storage is unavailable on this machine, so Google can’t be set up'
+      }
+    }
     const aws = this.nextAwsCredentials(input)
     if (aws.idMissing) errors.awsAccessKeyId = 'Enter the access key ID'
     if (aws.secretMissing) errors.awsSecretAccessKey = 'Enter the secret access key'
@@ -189,6 +263,7 @@ export class ConfigService {
     if (Object.keys(errors).length > 0) return { ok: false, errors }
 
     const aws = this.nextAwsCredentials(input)
+    if (input.googleClient) this.setGoogleClient(input.googleClient)
     this.db.transaction((tx) => {
       for (const row of this.sourceRows()) {
         const location =
@@ -227,16 +302,7 @@ export class ConfigService {
   }
 
   setGoogleRefreshToken(token: string): void {
-    if (!this.secrets.available()) {
-      throw new Error(
-        'Secure storage is unavailable on this machine, so the Google sign-in can’t be saved'
-      )
-    }
-    this.db
-      .update(sources)
-      .set({ credentials: this.secrets.encrypt(token) })
-      .where(eq(sources.type, 'remote'))
-      .run()
+    this.setGoogleCredentials({ ...this.googleCredentials(), refreshToken: token })
   }
 
   getBackupConfig(): BackupConfig {
@@ -248,7 +314,7 @@ export class ConfigService {
         type: row.type,
         name: row.name,
         location: row.location,
-        credentials: row.credentials ? this.secrets.decrypt(row.credentials) : undefined,
+        credentials: row.type === 'remote' ? this.googleCredentials().refreshToken : undefined,
         ...this.readiness(row, google)
       })),
       destination: {
@@ -258,7 +324,7 @@ export class ConfigService {
       },
       pattern: this.pattern(),
       identity: this.identity(),
-      googleEnv: this.googleEnv()
+      googleEnv: this.googleClient()
     }
   }
 }

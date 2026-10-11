@@ -29,6 +29,7 @@ export function createMockApi(seed: { config: ConfigView; snapshot: BackupSnapsh
       stop()
       snap = {
         status: 'succeeded',
+        month: snap.month,
         stages: snap.stages,
         currentStage: null,
         result: {
@@ -66,6 +67,9 @@ export function createMockApi(seed: { config: ConfigView; snapshot: BackupSnapsh
         if (patternError) return { ok: false, errors: { folderNamingPattern: patternError } }
         config = {
           ...config,
+          ...(input.googleClient && {
+            google: { ...config.google, clientConfigured: true, missingEnv: [] }
+          }),
           sources: config.sources.map((s) => ({
             ...s,
             location: s.type === 'local' ? input.localFolder : input.googleDriveLocation
@@ -86,14 +90,32 @@ export function createMockApi(seed: { config: ConfigView; snapshot: BackupSnapsh
       chooseLocalFolder: () => delay('/Users/alex/Pictures/Holidays')
     },
     google: {
-      async signIn() {
-        if (!config.google.clientConfigured) {
-          return {
-            ok: false,
-            error: `Google Drive not configured: set ${config.google.missingEnv.join(' and ')}`
-          }
+      async signIn(client) {
+        if (client && !/\.apps\.googleusercontent\.com$/.test(client.clientId)) {
+          return { ok: false, error: 'The client ID ends in .apps.googleusercontent.com' }
         }
-        config = { ...config, google: { ...config.google, signedIn: true } }
+        if (!config.google.clientConfigured && !client) {
+          return { ok: false, error: 'Enter the Google OAuth client ID and secret first' }
+        }
+        config = {
+          ...config,
+          google: {
+            clientConfigured: true,
+            missingEnv: [],
+            signedIn: true,
+            accountName: 'Alex Example'
+          },
+          sources: config.sources.map((s) =>
+            s.type === 'remote'
+              ? {
+                  ...s,
+                  hasCredentials: true,
+                  configured: !!s.location,
+                  notConfiguredReason: s.location ? undefined : 'No Google Drive location set'
+                }
+              : s
+          )
+        }
         return delay({ ok: true as const })
       }
     },
@@ -104,8 +126,10 @@ export function createMockApi(seed: { config: ConfigView; snapshot: BackupSnapsh
         const remote = config.sources.find(
           (s) => s.type === 'remote' && req.sourceIds.includes(s.id)
         )
+        const local = config.sources.find((s) => s.type === 'local' && req.sourceIds.includes(s.id))
         const ids: StageId[] = [
           ...(remote ? ['download' as const] : []),
+          ...(local ? ['local' as const] : []),
           'compress',
           'upload',
           ...(req.cleanUp ? ['cleanup' as const] : [])
@@ -115,7 +139,8 @@ export function createMockApi(seed: { config: ConfigView; snapshot: BackupSnapsh
         snap = {
           status: 'running',
           stages: ids.map((id) => ({ id, percent: 0 })),
-          currentStage: ids[0]
+          currentStage: ids[0],
+          month: req.month
         }
         run()
         return emit()

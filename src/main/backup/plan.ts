@@ -71,7 +71,15 @@ interface LocalFile {
   size: number
 }
 
-async function listLocalFiles(root: string): Promise<LocalFile[]> {
+/**
+ * Every visible file under `root`. Progress is reported per top-level entry, since the total isn't
+ * known up front; `checkpoint` runs between them so a pause takes effect.
+ */
+async function listLocalFiles(
+  root: string,
+  progress: (fraction: number) => void = () => undefined,
+  checkpoint: () => Promise<void> = async () => undefined
+): Promise<LocalFile[]> {
   const out: LocalFile[] = []
   const walk = async (dir: string): Promise<void> => {
     for (const dirent of await readdir(dir, { withFileTypes: true })) {
@@ -87,7 +95,16 @@ async function listLocalFiles(root: string): Promise<LocalFile[]> {
       }
     }
   }
-  await walk(root)
+  const top = (await readdir(root, { withFileTypes: true })).filter((d) => !d.name.startsWith('.'))
+  for (const [i, dirent] of top.entries()) {
+    await checkpoint()
+    const file = path.join(root, dirent.name)
+    if (dirent.isDirectory()) await walk(file)
+    else if (dirent.isFile())
+      out.push({ file, relativePath: dirent.name, size: (await stat(file)).size })
+    progress((i + 1) / top.length)
+  }
+  progress(1)
   return out
 }
 
@@ -119,6 +136,7 @@ export function createPlanner(deps: PlannerDeps): Planner {
 
     // Filled in by the stages, in order.
     let driveEntries: Entry[] = []
+    let localEntries: Entry[] = []
     let entries: Entry[] = []
 
     const stages: Stage[] = []
@@ -150,20 +168,34 @@ export function createPlanner(deps: PlannerDeps): Planner {
       })
     }
 
+    if (local.length > 0) {
+      stages.push({
+        id: 'local',
+        async run(ctx) {
+          localEntries = []
+          for (const [i, s] of local.entries()) {
+            const files = await listLocalFiles(
+              s.location,
+              (fraction) => ctx.progress((i + fraction) / local.length),
+              ctx.checkpoint
+            )
+            for (const f of files) {
+              localEntries.push({
+                file: f.file,
+                archivePath: `${s.name}/${f.relativePath}`,
+                size: f.size,
+                origin: { kind: 'local' }
+              })
+            }
+          }
+        }
+      })
+    }
+
     stages.push({
       id: 'compress',
       async run(ctx) {
-        entries = [...driveEntries]
-        for (const s of local) {
-          for (const f of await listLocalFiles(s.location)) {
-            entries.push({
-              file: f.file,
-              archivePath: `${s.name}/${f.relativePath}`,
-              size: f.size,
-              origin: { kind: 'local' }
-            })
-          }
-        }
+        entries = [...driveEntries, ...localEntries]
         if (entries.length === 0)
           throw new Error('There’s nothing to back up: the selected items are empty')
         const totalBytes = entries.reduce((sum, e) => sum + e.size, 0) || 1

@@ -16,6 +16,7 @@ Desktop app that backs up photos from a local folder and Google Drive to AWS S3.
 - `npm run dev`: Electron app with hot reload (renderer dev server on http://localhost:5173)
 - `npm run dev:web`: renderer only, in a plain browser at http://localhost:5173 (mock bridge). modelwright's preview uses this
 - `npm run build`: typecheck + production build
+- `npm run package:mac`: package `dist/mac-arm64/photobackup.app`, ad-hoc signed (no Apple Developer ID)
 - `npm run typecheck`: TypeScript for main/preload (`node`) and renderer (`web`)
 - `npm run lint`: ESLint
 - `npm test`: Vitest
@@ -40,9 +41,11 @@ main process. It needs a Google Cloud OAuth client of type **Desktop app**, pass
 - `GOOGLE_OAUTH_CLIENT_SECRET` (Google requires it for desktop clients, even with PKCE)
 
 Put them in a git-ignored `.env` at the project root (copy `.env.example`); the main process loads it at startup
-in development. A packaged app reads `<userData>/.env`. Variables set in the shell take precedence, e.g.
-`GOOGLE_OAUTH_CLIENT_ID=… GOOGLE_OAUTH_CLIENT_SECRET=… npm run dev`. Until both are set, the app
-shows "Google Drive not configured" rather than failing. Credentials (the Google refresh token and the AWS
+in development. A packaged app reads `<userData>/.env`, then on macOS the shared
+`/Library/Application Support/photobackup/.env`. Variables set in the shell take precedence, e.g.
+`GOOGLE_OAUTH_CLIENT_ID=… GOOGLE_OAUTH_CLIENT_SECRET=… npm run dev`. The client can also be entered
+in Settings the first time (Client ID and Client secret); that one is stored, encrypted, with the Google
+sign-in on the Google Drive source, and takes precedence over the environment. Credentials (the Google refresh token and the AWS
 keys) are encrypted with Electron `safeStorage` and never sent to the renderer.
 
 ## Design (modelwright)

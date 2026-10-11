@@ -19,6 +19,7 @@ export function placeholderConfig(googleReady: boolean): ConfigView {
         type: 'remote',
         name: 'Google Drive',
         location: googleReady ? 'https://drive.google.com/drive/folders/1Fam1lyPh0t0sAbCdEf' : '',
+        ...(googleReady && { displayLocation: 'Photos' }),
         hasCredentials: googleReady,
         configured: googleReady,
         ...(!googleReady && { notConfiguredReason: 'Google Drive not configured' })
@@ -36,7 +37,7 @@ export function placeholderConfig(googleReady: boolean): ConfigView {
     folderNamingPattern: DEFAULT_PATTERN,
     identity: { name: 'alex', surname: 'example' },
     google: googleReady
-      ? { clientConfigured: true, missingEnv: [], signedIn: true }
+      ? { clientConfigured: true, missingEnv: [], signedIn: true, accountName: 'Alex Example' }
       : {
           clientConfigured: false,
           missingEnv: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET'],
@@ -49,8 +50,10 @@ const idle: BackupSnapshot = { status: 'idle', stages: [], currentStage: null }
 
 const running: BackupSnapshot = {
   status: 'running',
+  month: '2026-09',
   stages: [
     { id: 'download', percent: 100 },
+    { id: 'local', percent: 100 },
     { id: 'compress', percent: 100 },
     { id: 'upload', percent: 42 },
     { id: 'cleanup', percent: 0 }
@@ -66,8 +69,10 @@ export function placeholderSnapshot(state: StateId): BackupSnapshot {
     case STATES.homePaused:
       return {
         status: 'paused',
+        month: '2026-09',
         stages: [
           { id: 'download', percent: 100 },
+          { id: 'local', percent: 100 },
           { id: 'compress', percent: 63 },
           { id: 'upload', percent: 0 }
         ],
@@ -76,8 +81,10 @@ export function placeholderSnapshot(state: StateId): BackupSnapshot {
     case STATES.homeFailed:
       return {
         status: 'failed',
+        month: '2026-09',
         stages: [
           { id: 'download', percent: 100 },
+          { id: 'local', percent: 100 },
           { id: 'compress', percent: 100 },
           { id: 'upload', percent: 37 }
         ],
@@ -88,8 +95,10 @@ export function placeholderSnapshot(state: StateId): BackupSnapshot {
     case STATES.homeSuccessful:
       return {
         status: 'succeeded',
+        month: '2026-09',
         stages: [
           { id: 'download', percent: 100 },
+          { id: 'local', percent: 100 },
           { id: 'compress', percent: 100 },
           { id: 'upload', percent: 100 }
         ],

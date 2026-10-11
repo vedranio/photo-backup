@@ -13,11 +13,17 @@ import { uploadFile } from './aws/upload'
 import { BackupJob } from './backup/job'
 import { createPlanner, removeStaleStaging } from './backup/plan'
 import { registerIpc } from './ipc'
+import { GoogleInfo } from './google/info'
+
+// The interface is a fixed 760 × 640; a larger window centres it (see .app-frame in main.css).
+const INTERFACE = { width: 760, height: 640 }
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
-    width: 760,
-    height: 640,
+    ...INTERFACE,
+    useContentSize: true,
+    // The app's backdrop colour, so the window is never white while the page loads.
+    backgroundColor: '#0a0a0a',
     show: false,
     autoHideMenuBar: true,
     title: 'photobackup',
@@ -27,6 +33,11 @@ function createWindow(): void {
       sandbox: false
     }
   })
+
+  // Never smaller than the interface: the minimum is the content size plus the window's frame.
+  const [outerW, outerH] = mainWindow.getSize()
+  const [innerW, innerH] = mainWindow.getContentSize()
+  mainWindow.setMinimumSize(INTERFACE.width + outerW - innerW, INTERFACE.height + outerH - innerH)
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
@@ -47,13 +58,15 @@ function createWindow(): void {
 }
 
 /**
- * Local settings such as GOOGLE_OAUTH_CLIENT_ID, from `.env` files: the project root's in development, and
- * `<userData>/.env` always. Variables already set in the shell win.
+ * Local settings such as GOOGLE_OAUTH_CLIENT_ID, from `.env` files, first one to set a variable wins:
+ * the project root's (development only), the user's `<userData>/.env`, then on macOS a shared
+ * `/Library/Application Support/photobackup/.env` for every user on the Mac. Shell variables win over all.
  */
 function loadEnvFiles(): void {
   const files = [
     ...(is.dev ? [join(app.getAppPath(), '.env')] : []),
-    join(app.getPath('userData'), '.env')
+    join(app.getPath('userData'), '.env'),
+    ...(process.platform === 'darwin' ? ['/Library/Application Support/photobackup/.env'] : [])
   ]
   for (const file of files) {
     if (existsSync(file)) process.loadEnvFile(file)
@@ -80,13 +93,17 @@ function startServices(): void {
   const job = new BackupJob(
     createPlanner({
       config: () => config.getBackupConfig(),
-      drive: (refreshToken) => createDriveApi(authorisedClient(googleEnv(), refreshToken)),
+      drive: (refreshToken) =>
+        createDriveApi(authorisedClient(config.googleClient(), refreshToken)),
       upload: uploadFile,
       trashLocal: (file) => shell.trashItem(file),
       tmpDir: app.getPath('temp')
     })
   )
-  registerIpc(config, job, googleEnv)
+  const googleInfo = new GoogleInfo((refreshToken) =>
+    createDriveApi(authorisedClient(config.googleClient(), refreshToken))
+  )
+  registerIpc(config, job, googleInfo)
 }
 
 app.whenReady().then(() => {
