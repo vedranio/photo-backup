@@ -26,6 +26,9 @@ const api: Api = {
       ipcRenderer.on(IPC.backupUpdate, handler)
       return () => ipcRenderer.removeListener(IPC.backupUpdate, handler)
     }
+  },
+  log: {
+    reveal: () => ipcRenderer.invoke(IPC.logReveal)
   }
 }
 

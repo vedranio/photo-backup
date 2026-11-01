@@ -6,7 +6,12 @@ import type { BackupJob } from './backup/job'
 import { missingGoogleEnv, signInWithGoogle } from './google/oauth'
 import type { GoogleInfo } from './google/info'
 
-export function registerIpc(config: ConfigService, job: BackupJob, googleInfo: GoogleInfo): void {
+export function registerIpc(
+  config: ConfigService,
+  job: BackupJob,
+  googleInfo: GoogleInfo,
+  logFile: string
+): void {
   ipcMain.handle(IPC.configGet, () =>
     googleInfo.decorate(config.getView(), config.getBackupConfig())
   )
@@ -45,6 +50,8 @@ export function registerIpc(config: ConfigService, job: BackupJob, googleInfo: G
   ipcMain.handle(IPC.backupRetry, () => job.retry())
   ipcMain.handle(IPC.backupCancel, () => job.cancel())
   ipcMain.handle(IPC.backupDismiss, () => job.dismiss())
+
+  ipcMain.handle(IPC.logReveal, () => shell.showItemInFolder(logFile))
 
   job.onUpdate((snapshot) => {
     for (const win of BrowserWindow.getAllWindows())

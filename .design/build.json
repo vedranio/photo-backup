@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "builtAt": "2026-10-07T05:56:11.249Z",
+  "builtAt": "2026-11-01T01:47:21.923Z",
   "snapshot": {
     "config": {
       "schemaVersion": 1,
@@ -11,7 +11,7 @@
       }
     },
     "erd": {
-      "schemaVersion": 1,
+      "schemaVersion": 2,
       "entities": [
         {
           "id": "ent_verthlea",
@@ -127,7 +127,7 @@
       }
     },
     "flows": {
-      "schemaVersion": 2,
+      "schemaVersion": 3,
       "screens": [
         {
           "id": "scr_fjpt4enj",
@@ -138,8 +138,14 @@
               "id": "st_ki442ws8",
               "name": "Default",
               "sees": [
-                "Loading indicator",
-                "Credits"
+                {
+                  "id": "info_1",
+                  "text": "Loading indicator"
+                },
+                {
+                  "id": "info_2",
+                  "text": "Credits"
+                }
               ],
               "ctas": [
                 {
@@ -189,7 +195,10 @@
               "name": "Backup in progress",
               "notes": "The progress indicator will show the stage (eg. downloading from google drive, compressing, uploading, cleaning up) and % completed of each stage",
               "sees": [
-                "Progress indicator"
+                {
+                  "id": "info_1",
+                  "text": "Progress indicator"
+                }
               ],
               "ctas": [
                 {
@@ -206,7 +215,10 @@
               "id": "st_uh8cvm18",
               "name": "Backup successful",
               "sees": [
-                "Confirmation of number of items and size backed up"
+                {
+                  "id": "info_1",
+                  "text": "Confirmation of number of items and size backed up"
+                }
               ],
               "ctas": [
                 {
@@ -219,7 +231,10 @@
               "id": "st_vublspne",
               "name": "Backup failed",
               "sees": [
-                "Error details"
+                {
+                  "id": "info_1",
+                  "text": "Error details"
+                }
               ],
               "ctas": [
                 {
@@ -229,6 +244,11 @@
                 {
                   "id": "cta_ri8wpbtk",
                   "label": "Cancel"
+                },
+                {
+                  "id": "cta_cvses48g",
+                  "label": "Show log",
+                  "note": "Clicking this button opens finder in the location where the log file"
                 }
               ],
               "primaryCtaId": "cta_zd7xrpav"
@@ -237,8 +257,14 @@
               "id": "st_vuryip8b",
               "name": "Backup paused",
               "sees": [
-                "Backup paused",
-                "Stage and % completed"
+                {
+                  "id": "info_1",
+                  "text": "Backup paused"
+                },
+                {
+                  "id": "info_2",
+                  "text": "Stage and % completed"
+                }
               ],
               "ctas": [
                 {
@@ -263,13 +289,34 @@
               "id": "st_ttcugo7w",
               "name": "Default",
               "sees": [
-                "Google drive credentials",
-                "AWS credentials",
-                "Default Google drive location",
-                "Default AWS location",
-                "Default local folder",
-                "Folder naming convention",
-                "AWS storage class"
+                {
+                  "id": "info_1",
+                  "text": "Google drive credentials"
+                },
+                {
+                  "id": "info_2",
+                  "text": "AWS credentials"
+                },
+                {
+                  "id": "info_3",
+                  "text": "Default Google drive location"
+                },
+                {
+                  "id": "info_4",
+                  "text": "Default AWS location"
+                },
+                {
+                  "id": "info_5",
+                  "text": "Default local folder"
+                },
+                {
+                  "id": "info_6",
+                  "text": "Folder naming convention"
+                },
+                {
+                  "id": "info_7",
+                  "text": "AWS storage class"
+                }
               ],
               "ctas": [
                 {
@@ -294,7 +341,10 @@
               "id": "st_fjos0gua",
               "name": "Default",
               "sees": [
-                "Cancel backup?"
+                {
+                  "id": "info_1",
+                  "text": "Cancel backup?"
+                }
               ],
               "ctas": [
                 {
@@ -477,16 +527,16 @@
       ],
       "layout": {
         "scr_fjpt4enj": {
-          "x": 564,
-          "y": 375
+          "x": 525,
+          "y": 361
         },
         "scr_6lfsw3cs": {
           "x": 997,
           "y": 352
         },
         "scr_nqzsws1l": {
-          "x": 1780,
-          "y": -113
+          "x": 1952,
+          "y": 171
         },
         "scr_9bsey0ec": {
           "x": 1653,

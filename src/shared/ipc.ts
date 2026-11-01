@@ -10,5 +10,6 @@ export const IPC = {
   backupRetry: 'backup:retry',
   backupCancel: 'backup:cancel',
   backupDismiss: 'backup:dismiss',
-  backupUpdate: 'backup:update'
+  backupUpdate: 'backup:update',
+  logReveal: 'log:reveal'
 } as const

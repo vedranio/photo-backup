@@ -146,4 +146,8 @@ export interface Api {
     dismiss(): Promise<BackupSnapshot>
     onUpdate(listener: (snapshot: BackupSnapshot) => void): () => void
   }
+  log: {
+    /** Shows the main process's log file in Finder. */
+    reveal(): Promise<void>
+  }
 }

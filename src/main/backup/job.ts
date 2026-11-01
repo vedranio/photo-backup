@@ -8,6 +8,7 @@ import type {
   StageId,
   StageProgress
 } from '@shared/api'
+import { describeError, log } from '../log'
 
 export interface StageContext {
   /** Aborts on cancel, and on pause for stages with `abortOnPause`. */
@@ -87,6 +88,9 @@ export class BackupJob {
     this.stages = []
     this.currentStage = null
     this.status = 'running'
+    log.info(
+      `Backup started: ${request.month}, sources ${request.sourceIds.join(', ')}, clean up ${request.cleanUp}`
+    )
     void this.execute(this.run)
     this.emit()
     return this.snapshot()
@@ -95,6 +99,7 @@ export class BackupJob {
   pause(): BackupSnapshot {
     if (this.status !== 'running' || !this.run) return this.snapshot()
     this.status = 'paused'
+    log.info('Backup paused')
     const stage = this.run.plan?.stages[this.run.stageIndex]
     if (stage?.abortOnPause) this.run.controller.abort()
     this.emit()
@@ -104,6 +109,7 @@ export class BackupJob {
   resume(): BackupSnapshot {
     if (this.status !== 'paused') return this.snapshot()
     this.status = 'running'
+    log.info('Backup resumed')
     this.wakeWaiters()
     this.emit()
     return this.snapshot()
@@ -116,6 +122,7 @@ export class BackupJob {
     run.controller = new AbortController()
     this.error = undefined
     this.status = 'running'
+    log.info('Backup retried')
     void this.execute(run)
     this.emit()
     return this.snapshot()
@@ -123,6 +130,7 @@ export class BackupJob {
 
   cancel(): BackupSnapshot {
     if (this.run) {
+      log.info('Backup cancelled')
       this.run.cancelled = true
       this.run.controller.abort()
     }
@@ -180,6 +188,8 @@ export class BackupJob {
         const stage = plan.stages[index]
         this.currentStage = stage.id
         this.setPercent(index, 0)
+        const stageStarted = Date.now()
+        log.info(`Stage ${stage.id} started`)
         try {
           await stage.run({
             signal: run.controller.signal,
@@ -190,6 +200,7 @@ export class BackupJob {
           })
           if (run.cancelled) throw new Cancelled()
           this.setPercent(index, 100)
+          log.info(`Stage ${stage.id} finished after ${seconds(stageStarted)}`)
           run.stageIndex++
         } catch (err) {
           if (run.cancelled || this.run !== run) throw new Cancelled()
@@ -199,6 +210,9 @@ export class BackupJob {
             run.controller = new AbortController()
             continue
           }
+          log.error(
+            `Stage ${stage.id} failed after ${seconds(stageStarted)}: ${describeError(err)}`
+          )
           throw err
         }
       }
@@ -208,10 +222,14 @@ export class BackupJob {
       this.result = result
       this.currentStage = null
       this.status = 'succeeded'
+      log.info(
+        `Backup succeeded: ${result.itemCount} items, ${result.totalBytes} bytes to ${result.destination}`
+      )
       this.emit()
     } catch (err) {
       if (err instanceof Cancelled || run.cancelled || this.run !== run) return
       this.status = 'failed'
+      log.error(`Backup failed: ${describeError(err)}`)
       this.error = err instanceof Error ? err.message : String(err)
       this.emit()
     }
@@ -225,4 +243,8 @@ export class BackupJob {
     stage.percent = rounded
     this.emit()
   }
+}
+
+function seconds(since: number): string {
+  return `${((Date.now() - since) / 1000).toFixed(1)}s`
 }
