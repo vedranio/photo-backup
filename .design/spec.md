@@ -153,6 +153,8 @@ Actions:
 
 - **Retry** (primary) → Home › Backup in progress
 - **Cancel** → Confirm cancel
+- **Show log** (dead end)
+  - Clicking this button opens finder in the location where the log file
 
 #### Backup paused
 

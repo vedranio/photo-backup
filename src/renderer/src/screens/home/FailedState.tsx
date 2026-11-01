@@ -36,6 +36,10 @@ export function FailedState({ snapshot }: { snapshot: BackupSnapshot }): React.J
         >
           Cancel
         </button>
+        {/* Show log (cta_cvses48g): shows the log file in Finder, staying on this state */}
+        <button type="button" className="btn" onClick={() => act((api) => api.log.reveal())}>
+          Show log
+        </button>
       </div>
     </>
   )

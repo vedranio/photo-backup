@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, powerMonitor } from 'electron'
 import { existsSync } from 'fs'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -14,6 +14,7 @@ import { BackupJob } from './backup/job'
 import { createPlanner, removeStaleStaging } from './backup/plan'
 import { registerIpc } from './ipc'
 import { GoogleInfo } from './google/info'
+import { createFileLogger, describeError, log, setLogger } from './log'
 
 // The interface is a fixed 760 × 640; a larger window centres it (see .app-frame in main.css).
 const INTERFACE = { width: 760, height: 640 }
@@ -73,7 +74,21 @@ function loadEnvFiles(): void {
   }
 }
 
+/** `~/Library/Logs/photobackup/main.log` on macOS. */
+function startLogging(): string {
+  const file = join(app.getPath('logs'), 'main.log')
+  setLogger(createFileLogger(file))
+  log.info(
+    `photobackup ${app.getVersion()} started (Electron ${process.versions.electron}, ${process.platform})`
+  )
+  // A backup that spans a sleep is a likely cause of S3 rejecting requests as too old.
+  powerMonitor.on('suspend', () => log.info('System going to sleep'))
+  powerMonitor.on('resume', () => log.info('System woke up'))
+  return file
+}
+
 function startServices(): void {
+  const logFile = startLogging()
   loadEnvFiles()
   const migrationsFolder = app.isPackaged
     ? join(process.resourcesPath, 'drizzle')
@@ -84,10 +99,9 @@ function startServices(): void {
   // Leftovers from a backup interrupted by quitting or a crash. Doesn't hold up startup.
   removeStaleStaging(app.getPath('temp'))
     .then(
-      (removed) =>
-        removed.length && console.log(`Removed stale backup files: ${removed.join(', ')}`)
+      (removed) => removed.length && log.info(`Removed stale backup files: ${removed.join(', ')}`)
     )
-    .catch((err) => console.warn('Couldn’t remove stale backup files:', err))
+    .catch((err) => log.warn(`Couldn’t remove stale backup files: ${describeError(err)}`))
   const googleEnv = (): ReturnType<typeof readGoogleEnv> => readGoogleEnv()
   const config = new ConfigService(db, safeStorageBox, googleEnv, machineIdentity)
   const job = new BackupJob(
@@ -103,7 +117,7 @@ function startServices(): void {
   const googleInfo = new GoogleInfo((refreshToken) =>
     createDriveApi(authorisedClient(config.googleClient(), refreshToken))
   )
-  registerIpc(config, job, googleInfo)
+  registerIpc(config, job, googleInfo, logFile)
 }
 
 app.whenReady().then(() => {

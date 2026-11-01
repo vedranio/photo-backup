@@ -174,6 +174,9 @@ export function createMockApi(seed: { config: ConfigView; snapshot: BackupSnapsh
         listeners.add(listener)
         return () => listeners.delete(listener)
       }
+    },
+    log: {
+      reveal: () => delay(undefined)
     }
   }
 }
