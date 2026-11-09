@@ -173,12 +173,30 @@ cancelled. Leftovers from a quit or crash are cleaned up the next time the app s
 npm run package:mac
 ```
 
-This builds `dist/mac-arm64/photobackup.app` and signs it ad hoc, so it runs without an Apple Developer
-account. Copy it into `/Applications` to make it available to every user on the Mac:
+This builds `dist/mac-arm64/photobackup.app` and signs it ad hoc (or with `PHOTOBACKUP_SIGN_IDENTITY`, see
+below), so it runs without an Apple Developer account. Copy it into `/Applications` to make it available to every user on the Mac:
 
 ```bash
 ditto dist/mac-arm64/photobackup.app /Applications/photobackup.app
 ```
+
+#### Signing with a stable identity
+
+macOS keychain access is tied to the app's signature. An ad-hoc signature changes with every build, so after you
+install a new build each user's Mac sees it as a different app: it asks for the keychain password again, and if
+that is denied the saved Google sign-in and AWS keys can't be read (the app then asks for them again). To keep
+access across rebuilds, sign with a self-signed certificate instead (no Apple Developer account needed):
+
+1. In **Keychain Access**, choose **Keychain Access → Certificate Assistant → Create a Certificate…**
+2. Name it `photobackup`, set **Certificate Type** to **Code Signing**, and create it.
+3. Package with it:
+
+```bash
+PHOTOBACKUP_SIGN_IDENTITY=photobackup npm run package:mac
+```
+
+The first build signed this way asks each user once more; choose **Always Allow**. Later builds signed with the
+same certificate keep access.
 
 A copy built and installed on the same Mac opens normally. A copy downloaded from elsewhere is quarantined by
 macOS; allow it once under **System Settings → Privacy & Security → Open Anyway**.
