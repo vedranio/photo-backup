@@ -15,6 +15,7 @@ import { isStorageClass } from '@shared/storageClass'
 import { CONFIG_ID, type Db } from '../db'
 import { destinations, folderNamingConventions, sources } from '../db/schema'
 import type { SecretBox } from '../secrets'
+import { describeError, log } from '../log'
 import { parseS3Location, type S3Location } from '../aws/location'
 import { parseDriveFolderId } from '../google/location'
 import { missingGoogleEnv, type GoogleClientEnv } from '../google/oauth'
@@ -22,6 +23,8 @@ import { missingGoogleEnv, type GoogleClientEnv } from '../google/oauth'
 type SourceRow = typeof sources.$inferSelect
 
 export const GOOGLE_NOT_CONFIGURED = 'Google Drive not configured'
+export const GOOGLE_SIGN_IN_UNREADABLE =
+  'Saved Google sign-in can’t be read on this account. Sign in again'
 
 /** What the Google Drive source's (encrypted) credentials hold. */
 interface GoogleCredentials {
@@ -29,6 +32,8 @@ interface GoogleCredentials {
   clientId?: string
   clientSecret?: string
 }
+
+type Secret = 'google' | 'aws'
 
 const GOOGLE_CLIENT_ID_RE = /^[\w.-]+\.apps\.googleusercontent\.com$/
 
@@ -74,6 +79,31 @@ export class ConfigService {
     private readonly identity: () => Identity
   ) {}
 
+  /** Secrets that couldn't be decrypted, so each is logged once rather than on every read. */
+  private readonly unreadable = new Set<Secret>()
+
+  /**
+   * Decrypts a stored secret, or returns null when it can't be read: secure storage is unavailable, or the
+   * keychain key it was encrypted with is gone or denied (on macOS, e.g. after an ad-hoc-signed rebuild).
+   * Unreadable credentials count as missing, so the user is asked for them again; saving overwrites them.
+   */
+  private tryDecrypt(kind: Secret, stored: string): string | null {
+    try {
+      if (!this.secrets.available()) throw new Error('Secure storage is unavailable')
+      const plain = this.secrets.decrypt(stored)
+      this.unreadable.delete(kind)
+      return plain
+    } catch (err) {
+      if (!this.unreadable.has(kind)) {
+        log.warn(
+          `Saved ${kind === 'google' ? 'Google' : 'AWS'} credentials can’t be read: ${describeError(err)}`
+        )
+      }
+      this.unreadable.add(kind)
+      return null
+    }
+  }
+
   private sourceRows(): SourceRow[] {
     return this.db.select().from(sources).where(eq(sources.configId, CONFIG_ID)).all()
   }
@@ -102,7 +132,8 @@ export class ConfigService {
   private googleCredentials(): GoogleCredentials {
     const stored = this.sourceRows().find((s) => s.type === 'remote')?.credentials
     if (!stored) return {}
-    const plain = this.secrets.decrypt(stored)
+    const plain = this.tryDecrypt('google', stored)
+    if (plain === null) return {}
     try {
       const parsed: unknown = JSON.parse(plain)
       if (parsed && typeof parsed === 'object') return parsed as GoogleCredentials
@@ -166,8 +197,14 @@ export class ConfigService {
     }
     if (!google.clientConfigured)
       return { configured: false, notConfiguredReason: GOOGLE_NOT_CONFIGURED }
-    if (!google.signedIn)
-      return { configured: false, notConfiguredReason: 'Not signed in to Google' }
+    if (!google.signedIn) {
+      return {
+        configured: false,
+        notConfiguredReason: this.unreadable.has('google')
+          ? GOOGLE_SIGN_IN_UNREADABLE
+          : 'Not signed in to Google'
+      }
+    }
     if (!row.location)
       return { configured: false, notConfiguredReason: 'No Google Drive location set' }
     return { configured: true }
@@ -175,7 +212,8 @@ export class ConfigService {
 
   private awsCredentials(): AwsCredentials | null {
     const stored = this.destinationRow().credentials
-    return stored ? (JSON.parse(this.secrets.decrypt(stored)) as AwsCredentials) : null
+    const plain = stored ? this.tryDecrypt('aws', stored) : null
+    return plain ? (JSON.parse(plain) as AwsCredentials) : null
   }
 
   getView(): ConfigView {

@@ -6,7 +6,7 @@ import type { SettingsInput } from '@shared/api'
 import { openDb } from '../db'
 import { sources } from '../db/schema'
 import type { SecretBox } from '../secrets'
-import { ConfigService, GOOGLE_NOT_CONFIGURED } from './service'
+import { ConfigService, GOOGLE_NOT_CONFIGURED, GOOGLE_SIGN_IN_UNREADABLE } from './service'
 import type { GoogleClientEnv } from '../google/oauth'
 
 const fakeBox: SecretBox = {
@@ -208,5 +208,74 @@ describe('ConfigService', () => {
       .run()
     expect(service.getView().google.signedIn).toBe(true)
     expect(service.getBackupConfig().sources[1].credentials).toBe('legacy-rt')
+  })
+})
+
+describe('ConfigService with credentials it can’t decrypt', () => {
+  // Like safeStorage when the keychain key changes: only ciphertext made with the current key decrypts.
+  let key: string
+  let available: boolean
+  const keyedBox: SecretBox = {
+    available: () => available,
+    encrypt: (s) => `${key}:${s}`,
+    decrypt: (s) => {
+      if (!s.startsWith(`${key}:`)) {
+        throw new Error(
+          'Error while decrypting the ciphertext provided to safeStorage.decryptString.'
+        )
+      }
+      return s.slice(key.length + 1)
+    }
+  }
+  let keyed: ConfigService
+
+  beforeEach(() => {
+    key = 'old'
+    available = true
+    env = { clientId: 'id', clientSecret: 'secret' }
+    const db = openDb(path.join(dir, 'keyed.db'), path.resolve('drizzle'), { localFolder: dir })
+    keyed = new ConfigService(
+      db,
+      keyedBox,
+      () => env,
+      () => ({ name: 'emily', surname: 'arnautovic' })
+    )
+    expect(
+      keyed.save({ ...validInput(), awsAccessKeyId: 'AKIA1', awsSecretAccessKey: 's3cret' })
+    ).toEqual({ ok: true })
+    keyed.setGoogleRefreshToken('rt')
+    expect(keyed.getView().sources[1].configured).toBe(true)
+  })
+
+  it('treats them as missing instead of failing to start', () => {
+    key = 'new'
+    const view = keyed.getView()
+    expect(view.google.signedIn).toBe(false)
+    expect(view.sources[1]).toMatchObject({
+      configured: false,
+      notConfiguredReason: GOOGLE_SIGN_IN_UNREADABLE
+    })
+    expect(view.destination).toMatchObject({ hasCredentials: false, accessKeyId: '' })
+    const backup = keyed.getBackupConfig()
+    expect(backup.sources[1].credentials).toBeUndefined()
+    expect(backup.destination.credentials).toBeNull()
+  })
+
+  it('does the same when secure storage is unavailable', () => {
+    available = false
+    expect(() => keyed.getView()).not.toThrow()
+    expect(keyed.getView().destination.hasCredentials).toBe(false)
+  })
+
+  it('reads them again once they are re-entered', () => {
+    key = 'new'
+    expect(
+      keyed.save({ ...validInput(), awsAccessKeyId: 'AKIA2', awsSecretAccessKey: 'n3w' })
+    ).toEqual({ ok: true })
+    keyed.setGoogleRefreshToken('rt2')
+    const view = keyed.getView()
+    expect(view.destination).toMatchObject({ hasCredentials: true, accessKeyId: 'AKIA2' })
+    expect(view.sources[1].configured).toBe(true)
+    expect(keyed.getBackupConfig().sources[1].credentials).toBe('rt2')
   })
 })
